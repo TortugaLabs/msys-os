@@ -1,0 +1,256 @@
+#!/bin/bash
+#
+[ -z "$MSYS_HOME" ] && export MSYS_HOME=$(cd $(dirname $0)/.. && pwd)
+export PATH=$PATH:$(cd $(dirname $0) && pwd)
+eval $($MSYS_HOME/msys-os/lib/ashlib/ashlib)
+include ver
+MSYS_VER=$(gitver $MSYS_HOME)
+MSYS_DIR=$(cd $(dirname $0) && pwd)
+
+ASHCC=ashcc
+type $ASHCC >/dev/null 2>&1 || fatal "No ASHCC found"
+
+IDFILE=
+DISABLE_AGENT=no
+
+OP=USAGE
+SSH_ADDR=""
+LCMD=""
+EXTRAS=(
+  "-DMSYS_HOME=\"$MSYS_HOME\""
+  "-DCFGDIR=\"$MSYS_HOME/cfg\""
+  "-DMSYSDIR=\"$MSYS_DIR\""
+  "-DVERSION=\"$MSYS_VER\""
+  "-I$MSYS_HOME/pkgs"
+  "-I$MSYS_DIR/lib"
+)
+ARCHIVE_LOG=yes
+ARCHIVE_FILE=
+
+while [ $# -gt 0 ] ; do
+  case "$1" in
+    --no-archive|-N)
+      ARCHIVE_LOG=no
+      ARCHIVE_FILE=
+      shift
+      ;;
+    --archive-file)
+      ARCHIVE_FILE=
+      ARCHIVE_LOG=yes
+      shift
+      ;;
+    --archive-file=*)
+      ARCHIVE_FILE=${1#--archive-file=}
+      ARCHIVE_LOG=yes
+      shift
+      ;;
+    -D*|-I*|-e*)
+      EXTRAS+=( "$1" )
+      shift
+      ;;
+    -t)
+      OP=cat
+      ARCHIVE_LOG=no
+      EXTRAS+=( -DTEST_MODE=1 )
+      shift
+      ;;
+    --cmd=*)
+      OP=cmd
+      ARCHIVE_LOG=no
+      LCMD=${1#--cmd=}
+      shift
+      ;;
+    -l|--local)
+      OP=sh
+      shift
+      ;;
+    --ssh=*)
+      OP=do_ssh
+      SSH_ADDR=${1#--ssh=}
+      shift
+      ;;
+    --ssh)
+      OP=do_ssh
+      shift
+      ;;
+    --no-agent)
+      DISABLE_AGENT=yes
+      ;;
+    --id=*)
+      DISABLE_AGENT=yes
+      IDFILE="-i ${1#--id=}"
+      shift
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+if [ "$OP" = "USAGE" ] ; then
+  sed s/^#// <<'EOF'
+#++
+# = MSYS(1)
+# :Revision: 2.0
+# :man manual: msys operations manual
+# :Author: A Liu Ly
+#
+# == NAME
+#
+# msys - system configuration script
+#
+# == SYNOPSIS
+#
+# *msys op* _arguments_ _sysname|template_
+#
+#
+# == DESCRIPTION
+#
+# *msys* is a configuration management utility.  It is meant to be
+# very ad-hoc orientated.
+#
+# It can either be used to configure systems or to run special *msys*
+# operations as defined by templates.
+#
+# == MODES
+#
+# *-t*::
+#    Test mode.  Will only show config script in `stdout`.  Output
+#    may be sumarized.
+# *--ssh* [=ip_address]::
+#    Will configure host through *ssh(1)* command.  By default
+#    IPP address will be obtained through nslookup.  This can
+#    be overriden by specifying an IP address.
+# *--cmd=* cmd::
+#    Will feed the configuration script to the specified `cmd`.
+# *--local|-l*::
+#    Will configure localhost by feeding the script to `/bin/sh`.
+#
+# == OPTIONS
+#
+# *--no-archive*::
+#    Disable the creation of an archive file.
+# *--archive-file* [=<file>]::
+#    Enable the creation of an archive file.  If `file` is
+#    specified, archive will be saved in that file location.
+# *-D|-I|-e*::
+#    These options are passed to "ashcc" verbatim.
+# *--no-agent*::
+#    Disable the use of the SSH authentication agent.
+# *--id=* file::
+#    Specified the SSH key to use.
+#
+# == CONSTANTS
+#
+# *--DDEBUG=1*::
+#    Enable -x for the executing shell.
+# *--DTEST_SHOW_ALL=1*::
+#    Disables BRIEF_OUTPUT in test mode.
+# *--DBRIEF_OUTPUT=1*::
+#    Enabled automatically by `-t` (test mode).  Templates can use it
+#    to suppress output of uninteresting boilerplate code.
+#
+# == ENVIRONMENT
+#
+# The following variables are recognized:
+#
+# *SSH_EXTRA_OPTS*::
+#    Additional options to use when calling `ssh`.
+# *SSH_PROXY_COMMAND*::
+#    Used to add a ProxyCommand directive for jump tunneling.
+#    Example proxy command:
+#
+#	`ssh -W %h:%p <user>@<jumpserver>`
+#
+# == SEE ALSO
+#
+# ashcc(1), ssh(1)
+#--
+EOF
+  exit
+fi
+
+[ "$#" -ne 1 ] && fatal "Usage: msys [opts] host|template"
+
+#
+# Create the config script
+#
+TARGET_HOST="$1"
+shift
+TMP_FILE=$(mktemp)
+trap "rm -f $TMP_FILE" EXIT
+
+$ASHCC -o$TMP_FILE \
+    "${EXTRAS[@]}" \
+    -DSYSNAME=\"$TARGET_HOST\" \
+    -DMSYS_OP=\"$OP\" \
+    $MSYS_DIR/msys_main.php
+
+RCODE=$(
+    set - $(tail -1 $TMP_FILE)
+    [ x"$1" = x"#SUCCESS" ] && exit 0
+    shift
+    echo "$*"
+    exit 1
+) || fatal "$RCODE"
+
+archive_file() {
+  local dir="$1" n="$2" sysname="$3" addr="$4"
+  echo -n $dir/msys-$sysname
+  # We dont really need to remember IP addr...
+  # [ -n "$addr" ] && echo -n _$addr
+  echo .$(date '+%Y%m%d').$n.txt
+}
+
+#
+# If we need to save it, create archive file
+#
+if [ $ARCHIVE_LOG = yes ] ; then
+  if [ -z $ARCHIVE_FILE ] ; then
+    if [ -d $MSYS_HOME/archive ] ; then
+      ARCHIVE_DIR="$MSYS_HOME/archive"
+    else
+      ARCHIVE_DIR="$HOME/msys.archive"
+    fi
+    [ ! -d $ARCHIVE_DIR ] && mkdir -p $ARCHIVE_DIR
+    N=0
+    ARCHIVE_FILE=$(archive_file $ARCHIVE_DIR $N $TARGET_HOST $SSH_ADDR)
+    while [ -f $ARCHIVE_FILE ]
+    do
+      N=$(expr $N + 1)
+      ARCHIVE_FILE=$(archive_file $ARCHIVE_DIR $N $TARGET_HOST $SSH_ADDR)
+    done
+  fi
+  cat $TMP_FILE > $ARCHIVE_FILE
+fi
+
+######################################################################
+#
+# OP's to perform
+#
+######################################################################
+
+cmd() {
+  $LCMD
+}
+
+do_ssh() {
+  [ $DISABLE_AGENT = yes ] && export SSH_AUTH_SOCK=
+  [ -z "$SSH_ADDR" ] && SSH_ADDR="$TARGET_HOST"
+
+  local xopts=()
+  if [ -n "$SSH_PROXY_COMMAND" ] ; then
+    xopts+=(-o ProxyCommand="$SSH_PROXY_COMMAND")
+  fi
+
+  if [ $ARCHIVE_LOG = no ] ; then
+    ssh -T -l root $IDFILE $SSH_EXTRA_OPTS "${xopts[@]}" "$SSH_ADDR"
+  else
+    ssh -T -l root $IDFILE $SSH_EXTRA_OPTS "${xopts[@]}" "$SSH_ADDR" \
+	sh -c ': ; export PATH=$PATH:/usr/local/bin ; type shlog && exec shlog || exec sh'
+  fi
+}
+
+######################################################################
+
+$OP < $TMP_FILE

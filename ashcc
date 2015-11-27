@@ -1,0 +1,4 @@
+#!/bin/sh
+script_dir=$(cd $(dirname $0) && pwd)
+script_name=$(basename $0)
+exec $script_dir/lib/ashlib/ashcc "$@"

@@ -1,0 +1,77 @@
+#!/bin/sh
+#
+# References:
+#	https://www.sixxs.net/tools/grh/ula/
+#	http://en.wikipedia.org/wiki/Unique_local_address
+#	http://tools.ietf.org/html/rfc4193
+#	http://www.kame.net/~suz/gen-ula.sh
+#
+ntpserv=ntp.sixxs.net
+
+# Get current time of day in 64-bit NTP format
+date=$(
+  echo "Query time server ($ntpserv)" 1>&2
+  ntpdate -dq $ntpserv 2> /dev/null |
+  sed -n 's/^transmit timestamp: *\([^ ]*\) .*/\1/p' |
+  tr -d "."
+)
+
+# Get eui64 id of system
+mac=$(ifconfig -a | awk '$1 == "ether" { print $2 }' | head -1)
+machex=$(echo "$mac" | tr -d ':')
+
+#length check
+len1=`echo $machex | wc -m`
+#character check
+len2=`echo $machex | tr -d [:xdigit:] | wc -m`
+if [ $len1 != 13 -o $len2 != 1 ]; then
+  echo "Error computing MAC address" 1>&2
+  exit 1
+fi
+
+# generates EUI64 from the MAC address
+first=`echo $machex | cut -c1-1`
+second=`echo $machex | cut -c2-2`
+macu=`echo $machex | cut -c3-6`
+macl=`echo $machex | cut -c7-12`
+
+# reversing u/l bit
+case $second in
+  [13579BDF])
+    echo "Error: $mac is a group MAC address" 1>&2
+    exit
+    ;;
+  0)
+    second_rev=2
+    ;;
+  2)
+    second_rev=0
+    ;;
+  4)
+    second_rev=6;
+    ;;
+  6)
+    second_rev=4;
+    ;;
+  8)
+    second_rev=a;
+    ;;
+  A)
+    second_rev=8;
+    ;;
+  C)
+    second_rev=e;
+    ;;
+  E)
+    second_rev=c;
+    ;;
+  *)
+    #impossible
+    echo "Error with MAC address $mac"
+    exit
+esac
+eui64="${first}${second_rev}${macu}fffe${macl}"
+
+globalid=$(echo $date$eui64 | sha1sum | cut -c31-40)
+echo "Generated ULA: " 1>&2
+echo fd${globalid} | sed "s|\(....\)\(....\)\(....\)|\1:\2:\3::/48|"

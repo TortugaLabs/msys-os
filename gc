@@ -1,0 +1,91 @@
+#!/bin/bash
+#
+# == NAME
+#
+# gc - purge msys logs
+#
+# == SYNOPSIS
+#
+# *gc* _[r] [--dir=archive-dir] [--versions=n]_
+#
+# == DESCRIPTION
+#
+# This script will purge the logs found in the `archive-dir`.  The default
+# is `dry-run` and to keep 3 versions in `$MSYS_HOME/archive`.
+#
+# == OPTIONS
+#
+# *-r*::
+#    Actually remove files.  The default is to simply do a dry-run.
+# *--dir=* archive_dir::
+#    Use the specified `archive_dir`.  The default is `$MSYS_HOME/archive`.
+# *--versions=* NN:
+#    Keep `NN` versions.  Defaults to `3`.
+#
+
+export MSYS_HOME=$(cd $(dirname $0)/.. && pwd)
+eval $($MSYS_HOME/msys-os/lib/ashlib/ashlib)
+
+ARCHIVE_DIR="$MSYS_HOME/archive"
+VARS=()
+DO=show
+COUNT=3
+
+[ $# -eq 0 ] && echo "Dry run.  Use -r to actually delete files" 1>&2
+
+while [ $# -gt 0 ] ; do
+  case "$1" in
+    -r)
+	DO="remove"
+	shift
+	;;
+    --dir=*)
+	ARCHIVE_DIR=${1#--dir=}
+	shift
+	;;
+    --versions=*)
+	COUNT=${1#--versions=}
+	shift
+	;;
+    *)
+	echo "Usage:"
+	echo "	$0 [-r] [--dir=path] [--versions=n]"
+	exit 1
+	;;
+  esac
+done
+
+
+remove() {
+  echo -n "$1: " 1>&2
+  rm -v $2
+}
+show() {
+  echo "$1: $2"
+}
+
+
+for F in $ARCHIVE_DIR/msys-*.txt
+do
+  [ -f $F ] || continue;
+  N=$(basename $F .txt  | sed \
+    -e 's/^msys-//' \
+    -e 's/\.[0-9]*\.[0-9]*$//' \
+    | tr '.' '_')
+
+  eval \[ -z \"\$n_${N}\" \] && VARS+=( $N )
+  eval n_${N}=\"\$n_${N} \$F\"
+done
+
+for N in ${VARS[*]}
+do
+  eval FLST=\"\$n_${N}\"
+  FLST="$(echo $FLST | tr ' ' '\n' | sort -r)"
+  c=0
+  for x in $FLST
+  do
+    c=$(expr $c + 1)
+    [ $c -le $COUNT ] && continue
+    $DO $N $x
+  done
+done

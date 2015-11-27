@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+# Initializes a repository
+#
+if [ ! -d msys-os ] ; then
+  cat 1>&2 <<-EOF
+	Make sure you are running from the directory that will contain
+	your repository and that the msys-os directory already exists.
+	EOF
+  exit 1
+fi
+if [ ! -x msys-os/utils/gen-ula ] ; then
+  echo "Make sure you have a valid msys-os package" 1>&2
+  exit 2
+fi
+
+if [ ! -d cfg ] ; then
+  mkdir -p cfg
+  for f in globs.ini hosts.ini nets.ini
+  do
+    [ ! -f cfg/$f ] && [ -f msys-os/sample/$f ] && cp -av msys-os/sample/$f cfg
+  done
+fi
+
+for d in archive pkgs templ
+do
+  [ -d $d ] && continue
+  mkdir -p $d
+  echo "This is a place holder" > $d/README.md
+done
+
