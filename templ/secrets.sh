@@ -23,8 +23,8 @@ fixfile --mode=600 $secrets <<EOF
 <?php readfile(MSYS_SECRETS_CFG); ?>
 
 EOF
-echo -n MD5a:$sysid:
-md5sum $secrets
+echo MD5a:$sysid:$(md5sum $secrets)
+
 <?php } ?>
 
 <?php if (is_file(MSYS_ADMIN_KEYS)) { ?>
@@ -49,11 +49,11 @@ fixfile --mode=600 $syskeys <<-EOF
 		if ($kline) echo $kline.NL;
 	     } ?>
 	EOF
-echo -n MD5b:$sysid:
-md5sum $syskeys
+echo MD5b:$sysid:$(md5sum $syskeys)
 
 if [ -f $authkeys ] ; then
-  cur=$(md5sum $syskeys | awk '{print $1}')
+  cur=$(md5sum $authkeys | awk '{print $1}')
+  #echo "cur=$cur old=$old"
   if [ x"$cur" != x"$old" ] ;then
     warn "$authkeys does not use $syskeys"
     exit
