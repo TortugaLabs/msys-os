@@ -1,5 +1,4 @@
 <?php
-if (!defined('BRIEF_OUTPUT')) require_once('instree.sh');
 
 //
 // Install a tree

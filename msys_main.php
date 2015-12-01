@@ -109,6 +109,12 @@ if ($templ === false) {
   trigger_error('Missing template '.SYSNAME,E_USER_ERROR);
   die('Aborting!');
 }
+// Include packages...
+foreach (glob(MSYS_HOME.'/pkgs/*',GLOB_MARK|GLOB_ONLYDIR) as $d) {
+   $k = strtoupper(basename($d));
+   define('PKG_'.$k,$d);
+}
+set_include_path(get_include_path().PATH_SEPARATOR.MSYS_HOME.'/pkgs');
 
 define('MSYS_TEMPL',$templ);
 define('MSYS_TEMPL_DIR',dirname($templ).'/');
