@@ -20,7 +20,7 @@ if (!defined('BRIEF_OUTPUT')) {
   require_once('ashlib/fixattr.sh');
   require_once('ashlib/network.sh');
   if (!defined('NO_SHLOG')) {
-     if (NO_SHLOG) echo fixfile_inc('ashlib/shlog','/bin/shlog',['mode'=>755]);
+    echo fixfile_inc('ashlib/shlog','/bin/shlog',['mode'=>755]);
   }
 } else {
   echo ('#'.NL);
