@@ -16,6 +16,10 @@ if (!isset($cf['hosts'][SYSNAME])) {
 }
 
 function fixfile_inc($src,$dst,$opts=null) {
+   if (defined('BRIEF_OUTPUT')) {
+      return NL.'# fixfile include("'.$src.'" => "'.$dst.'") # BRIEF_OUTPUT'.NL;
+
+   }
    // Make globals variable in this context...
    foreach ($GLOBALS as $i=>$j) {
       eval('global $'.$i.';');
