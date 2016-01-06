@@ -21,6 +21,7 @@ if (!defined('BRIEF_OUTPUT')) {
   require_once('ashlib/network.sh');
   require_once('ashlib/on_exit.sh');
   require_once('ashlib/kvped.sh');
+  require_once('ashlib/mkid.sh');
   if (!defined('NO_SHLOG')) {
     echo fixfile_inc('ashlib/shlog','/bin/shlog',['mode'=>755]);
   }
