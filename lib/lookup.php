@@ -209,6 +209,10 @@ function lk_addr_item($type,$a = NULL,$b = NULL) {
 }
 function res($type,$a=NULL,$b=NULL,$index=-1) {
   $res = lk_addr_item($type,$a,$b);
+  if (count($res) == 0) {
+     trigger_error("$a ($type) not found",E_USER_WARNING);
+     return '#MISSING($a $type)';
+  }
   if ($index == -1) return implode(',',$res);
   //if ($index == MSYS_LOOKUP_FIRST) {
   //$v = array_values($res);
