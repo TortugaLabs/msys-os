@@ -51,6 +51,11 @@ fixfile --mode=600 $syskeys <<-EOF
 	EOF
 echo MD5b:$sysid:$(md5sum $syskeys)
 
+if [ -d /etc/tlr-data ] ; then
+  warn "Syncing TLR data"
+  cp -a $syskeys /etc/tlr-data/admin_keys
+fi
+
 if [ -f $authkeys ] ; then
   cur=$(md5sum $authkeys | awk '{print $1}')
   #echo "cur=$cur old=$old"
@@ -63,6 +68,5 @@ else
   warn "Initializing $authkeys..."
 fi
 cp -a $syskeys $authkeys
-
 
 <?php } ?>
