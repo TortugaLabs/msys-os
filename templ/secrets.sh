@@ -41,20 +41,16 @@ if [ -f $syskeys ] ; then
 else
   old="___"
 fi
-<?php $keys = file(MSYS_ADMIN_KEYS); ?>
 
-fixfile --mode=600 $syskeys <<-EOF
-	<?php foreach ($keys as $ln) {
-		list($id,$kline) = preg_split('/\s+/',$ln,2);
-		if ($kline) echo $kline.NL;
-	     } ?>
-	EOF
+fixfile --mode=600 $syskeys <<EOF
+<?php readfile(MSYS_ADMIN_KEYS); ?>
+
+EOF
+new=$(md5sum $syskeys | awk '{print $1}')
+
 echo MD5b:$sysid:$(md5sum $syskeys)
 
-if [ -d /etc/tlr-data ] ; then
-  warn "Syncing TLR data"
-  cp -a $syskeys /etc/tlr-data/admin_keys
-fi
+[ "$new" = "$old" ] && exit
 
 if [ -f $authkeys ] ; then
   cur=$(md5sum $authkeys | awk '{print $1}')
