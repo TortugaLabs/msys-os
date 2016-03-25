@@ -18,11 +18,11 @@ SSH_ADDR=""
 LCMD=""
 EXTRAS=(
   "-DMSYS_HOME=\"$MSYS_HOME\""
-  "-DCFGDIR=\"$MSYS_HOME/cfg\""
   "-DMSYSDIR=\"$MSYS_DIR\""
   "-DVERSION=\"$MSYS_VER\""
   "-I$MSYS_HOME/pkgs"
   "-I$MSYS_DIR/lib"
+  "-I$MSYS_HOME"
 )
 ARCHIVE_LOG=yes
 ARCHIVE_FILE=

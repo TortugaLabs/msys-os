@@ -88,7 +88,50 @@ function ck($var,$def = '',$ext='') {
   return eval('return '.$var.$ext.';');
 }
 
+/**
+ * Conditional formatted string
+ *
+ * @param $var mixed	value to check|display
+ * @param $fmt string	format to use in sprintf if $var is set
+ * @param $def string	default value to use
+ */
 function cfmt($var,$fmt,$def = '') {
   if (isset($var)) return sprintf($fmt,$var);
   return $def;
+}
+
+/**
+ * Used to include a file (honouring PHP macros) in the target configuration
+ *
+ * @param $src string	file to include
+ * @param $dst string	path to file to create in target
+ * @param $opts array	options to pass to fixfile
+ */
+function fixfile_inc($src,$dst,$opts=null) {
+   if (defined('BRIEF_OUTPUT')) {
+      return NL.'# fixfile include("'.$src.'" => "'.$dst.'") # BRIEF_OUTPUT'.NL;
+
+   }
+   // Make globals variable in this context...
+   foreach ($GLOBALS as $i=>$j) {
+      eval('global $'.$i.';');
+   }
+   $txt = NL.'fixfile';
+   if (is_array($opts)) {
+      foreach ($opts as $i=>$j) {
+	 if (is_numeric($i)) {
+	    $txt .= ' --'.$j;
+	 } else {
+	    $txt .= ' --'.$i.'='.$j;
+	 }
+      }
+   }
+   $txt .= ' '.$dst.' <<'.QEOFMARK.NL;
+
+   ob_start();
+   require($src);
+   $txt .= ob_get_clean();
+
+   $txt .= EOFLINE;
+   return $txt;
 }
