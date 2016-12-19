@@ -32,7 +32,7 @@
  * expansions ($abc or $<abc>).  Or PHP <?= statement ?>
  * 
  * @param str $var	variable to lookup
- * @param array $cf	INi stash
+ * @param array $cf	INI stash
  * @param array $opts	Lookup options
  * @param array $v	(internal) used for recursive lookups
  * @param array $cvar	(internal) used for error reporting in recursive lookups
@@ -59,7 +59,7 @@ function vlookup($var, $cf, $opts = NULL, $v = NULL,$cvar=NULL) {
       //VLOOKUP_NO_PHP_EXPANSION => TRUE,
     ] as $k => $j) {
     if (array_key_exists($k,$opts)) continue;
-    $vv = array_search($k, $opts);
+    $vv = array_search($k, $opts,TRUE);
     if ($vv === FALSE) {
       $opts[$k] = FALSE;
     } else {
@@ -140,4 +140,79 @@ function vlookup($var, $cf, $opts = NULL, $v = NULL,$cvar=NULL) {
   $out .= substr($v[$var],$off);
   return $out;
 }
+
+/**
+ * Determine if an array is a vector (or list)
+ * 
+ * @param array $vec
+ * @return bool
+ */
+function is_vector(array &$vec, $chk = FALSE) {
+  # Determine if $vec array is a vector
+  #-
+  $lst = array_keys($vec);
+  $cnt = count($lst);
+  for ($i = 0; $i < $cnt ; $i++) {
+    if ($i !== $lst[$i]) return FALSE;
+    if ($chk && is_array($vec[$i])) return FALSE;
+  }
+  return TRUE;
+}
+
+
+
+/**
+ * Export configuration hive as Shell script variables
+ * 
+ * @param array $vec
+ * @return bool
+ */
+function sh_export($cf,$opts = NULL, $prefix= '',$v = NULL) {
+  $out = '';
+  if ($v === NULL) $v = &$cf;
+  foreach ($v as $i=>$j) {
+    if (strpos($i,'$') !== FALSE) continue; // Skip keys that contain '$'
+    $ii = _vlookup_shvar($i);
+    if (is_array($j)) {
+      if (is_vector($j,TRUE)) {
+	$out .= '# v'.$i.PHP_EOL;
+	$oo = $opts;
+	$oo[VLOOKUP_FLATTEN] = ' ';
+	$oo[VLOOKUP_FLATTEN_NO_UNDEF] = TRUE;
+	$out .= $prefix.$ii.'='.escapeshellarg(vlookup($i,$cf,$oo,$v)).PHP_EOL;
+      } else {
+	$out .= '# a'.$i.PHP_EOL;
+	$keys = []; $names = [];
+	foreach (array_keys($j) as $k) {
+	  if (strpos($k,'$') !== FALSE) continue; // Skip keys that contain '$'
+	  $kk = _vlookup_shvar($k);
+	  $keys[] = $prefix.$ii.'_'.$kk;
+	  $out .= $prefix.$ii.'_'.$kk.'__NAME_='.escapeshellarg($k).PHP_EOL;
+	  $names[] = $k;
+	}
+	if (count($k) == 0) continue;
+	$out .= $prefix.$ii.'__NAMES_='.escapeshellarg(implode(' ',$names)).PHP_EOL;
+	$out .= $prefix.$ii.'='.escapeshellarg(implode(' ',$keys)).PHP_EOL;
+	$out .= sh_export($cf,$opts,$prefix.$ii.'_',$j);
+      }
+      $out .= '####'.PHP_EOL;
+    } else {
+      $out .= $prefix.$ii.'='.escapeshellarg(vlookup($i, $cf, $opts, $v)).PHP_EOL;
+    }
+  }
+  return $out;
+}
+
+/**
+ *
+ * Sanitise shell variable names
+ * @internal
+ * @param string $varname	Input name
+ * @return string		Sanitised output name
+ */
+function _vlookup_shvar($varname) {
+  return strtr(strtoupper($varname),'-. */:','___x__');
+}
+
+
 
