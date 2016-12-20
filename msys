@@ -9,6 +9,12 @@ type $ASHCC >/dev/null 2>&1 || fatal "No ASHCC found"
 op=msys_main
 args=()
 
+usage() {
+  cat <<-EOF
+	Usage: $0 [options] system [template-options]
+	EOF
+  exit
+}
 
 msys_main() {
   local ashcc_args=() rxx_args=()
@@ -72,6 +78,8 @@ done
 
 
 exit
+
+######################################################################
 
 include ver
 MSYS_VER=$(gitver $MSYS_HOME)
