@@ -1,9 +1,15 @@
 #!/bin/bash
 #
-[ -z "$MSYS_BASE" ] && export MSYS_HOME=$(cd $(dirname $0) && pwd)
+# SECRETS_CFG
+# ADM_KEYS
+# MSYS_TEMPLATE_PATH
+# MSYS_INI
+
+[ -z "$MSYS_BASE" ] && export MSYS_BASE=$(cd $(dirname $0) && pwd)
 export PATH=$PATH:"$MSYS_BASE"
-eval $($MSYS_HOME/ashlib/ashlib)
+eval $($MSYS_BASE/ashlib/ashlib)
 ASHCC=$ASHLIB/ashcc
+RXX=$MSYS_BASE/rxx
 
 type $ASHCC >/dev/null 2>&1 || fatal "No ASHCC found"
 op=msys_main
@@ -16,15 +22,54 @@ usage() {
   exit
 }
 
+archive_filename() {
+  local dir="$1" n="$2" sysname="$3"
+  echo -n $dir/msys-$sysname
+  echo .$(date '+%Y%m%d').$n.txt
+}
+
 msys_main() {
   local ashcc_args=() rxx_args=()
-  local ssh_host=false
+  local \
+    ssh_host=false \
+    archive_log=true \
+    archive_file="" \
+    archive_dir="" \
+    verbose=false
 
   while [ $# -gt 0 ] ; do
     case "$1" in
-      --show|-t|--ssh=*||--cmd=*|--local|-l|--sudo=*|--sudo|--no-log|--log|--extra=*|--remote-user=*|--ruser=*|--no-agent|--id=*|--ssh-proxy=*)
+      -v)
+        verbose=true
+	;;
+      --archive-dir=*)
+        archive_dir="${1#--archive-dir=}"
+	shift
+	;;
+      --no-archive|-N)
+	archive_log=false
+	archive_file=""
+	shift
+	;;
+      --archive-file)
+	archive_log=true
+	archive_file=""
+	shift
+	;;
+      --archive-file=*)
+	archive_log=true
+	archive_file="${1#--archive-file=}"
+	shift
+	;;
+      --show|-t)
 	rxx_args+=( "$1" )
-        ;;s
+	ashcc_args+=( "-DTEST_MODE=1" )
+	archive_log=false
+	archive_file=""
+	;;
+      --ssh=*|--cmd=*|--local|-l|--sudo=*|--sudo|--no-log|--log|--extra=*|--remote-user=*|--ruser=*|--no-agent|--id=*|--ssh-proxy=*)
+	rxx_args+=( "$1" )
+        ;;
       -x)
 	rxx_args+=( "$1" "$2" )
 	shift
@@ -43,16 +88,45 @@ msys_main() {
   [ $# -eq 0 ] && usage
   # Handle multi host? in parallel?
   local msys_host="$1"
+  shift
   $ssh_host && rxx_args+=( "--ssh=$msys_host" )
 
   local temp_script="$(mktemp)"
   trap "rm -f $temp_script" EXIT
 
-  # Read and export config
-  # Lookup host
-  # find template from template path
-  # archive output
+  $verbose && warn "Preparing script..."
+  if ! $ASHCC -o"$temp_script" "${ashcc_args[@]}" "-DMSYS_NAME='$msys_host'" "$MSYS_BASE/msys_main.php" "$@" ; then
+    fatal "ASHCC execution failed"
+  fi
+  RCODE=$(
+    set - $(tail -1 "$temp_script")
+    [ x"$1" = x"#SUCCESS" ] && exit 0
+    shift
+    echo "$*"
+    exit 1
+  ) || fatal "$RCODE"
+  #
+  # If we need to save it, create archive file
+  #
+  if $archive_log ; then
+    if [ -z "$archive_file" ] ; then
+      [ -z "$archive_dir" ] && archive_dir="$(pwd)/archives"
+      [ ! -d $archive_dir ] && mkdir -p $archive_dir
+      n=0
+      archive_file="$(archive_filename $archive_dir $n $msys_host)"
+      while [ -f $archive_file ]
+      do
+	n=$(expr $n + 1)
+	archive_file="$(archive_filename $archive_dir $n $msys_host)"
+      done
+    fi
+    $verbose && warn "Archiving to $archive_file"
+    cat "$temp_script" > "$archive_file"
+  fi
+    
   # send thru rxx
+  $verbose && warn "Running RXX"
+  rxx "${rxx_args[@]}" "$temp_script"
 }
 
 msys_secrets() {
@@ -61,12 +135,23 @@ msys_secrets() {
 
 while [ $# -gt 0 ] ; do
   case "$1" in
-    --secrets=*|--admkeys=*)
-      op=msys_secrets
-      args+=( "$1" )
+    --secrets=*)
+      export SECRETS_CFG="${1#--secrets=}"
+      ;;
+    --admkeys=*)
+      export ADM_KEYS="${1#--admkeys=}"
+      ;;
+    --ini=*)
+      export MSYS_INI="${1#--ini=}"
+      ;;
+    --template-path=*)
+      export MSYS_TEMPLATE_PATH="${1#--template-path=}"
       ;;
     --msecrets)
       op=msys_secrets
+      ;;
+    --help)
+      op=msys_help
       ;;
     *)
       break
@@ -79,6 +164,9 @@ done
 
 exit
 
+######################################################################
+######################################################################
+######################################################################
 ######################################################################
 
 include ver
@@ -104,65 +192,6 @@ EXTRAS=(
 ARCHIVE_LOG=yes
 ARCHIVE_FILE=
 
-while [ $# -gt 0 ] ; do
-  case "$1" in
-    --no-archive|-N)
-      ARCHIVE_LOG=no
-      ARCHIVE_FILE=
-      shift
-      ;;
-    --archive-file)
-      ARCHIVE_FILE=
-      ARCHIVE_LOG=yes
-      shift
-      ;;
-    --archive-file=*)
-      ARCHIVE_FILE=${1#--archive-file=}
-      ARCHIVE_LOG=yes
-      shift
-      ;;
-    -D*|-I*|-e*)
-      EXTRAS+=( "$1" )
-      shift
-      ;;
-    -t)
-      OP=cat
-      ARCHIVE_LOG=no
-      EXTRAS+=( -DTEST_MODE=1 )
-      shift
-      ;;
-    --cmd=*)
-      OP=cmd
-      ARCHIVE_LOG=no
-      LCMD=${1#--cmd=}
-      shift
-      ;;
-    -l|--local)
-      OP=sh
-      shift
-      ;;
-    --ssh=*)
-      OP=do_ssh
-      SSH_ADDR=${1#--ssh=}
-      shift
-      ;;
-    --ssh)
-      OP=do_ssh
-      shift
-      ;;
-    --no-agent)
-      DISABLE_AGENT=yes
-      ;;
-    --id=*)
-      DISABLE_AGENT=yes
-      IDFILE="-i ${1#--id=}"
-      shift
-      ;;
-    *)
-      break
-      ;;
-  esac
-done
 
 if [ "$OP" = "USAGE" ] ; then
   sed s/^#// <<'EOF'
@@ -263,43 +292,7 @@ $ASHCC -o$TMP_FILE \
     -DMSYS_OP=\"$OP\" \
     $MSYS_DIR/msys_main.php
 
-RCODE=$(
-    set - $(tail -1 $TMP_FILE)
-    [ x"$1" = x"#SUCCESS" ] && exit 0
-    shift
-    echo "$*"
-    exit 1
-) || fatal "$RCODE"
 
-archive_file() {
-  local dir="$1" n="$2" sysname="$3" addr="$4"
-  echo -n $dir/msys-$sysname
-  # We dont really need to remember IP addr...
-  # [ -n "$addr" ] && echo -n _$addr
-  echo .$(date '+%Y%m%d').$n.txt
-}
-
-#
-# If we need to save it, create archive file
-#
-if [ $ARCHIVE_LOG = yes ] ; then
-  if [ -z $ARCHIVE_FILE ] ; then
-    if [ -d $MSYS_HOME/archive ] ; then
-      ARCHIVE_DIR="$MSYS_HOME/archive"
-    else
-      ARCHIVE_DIR="$HOME/msys.archive"
-    fi
-    [ ! -d $ARCHIVE_DIR ] && mkdir -p $ARCHIVE_DIR
-    N=0
-    ARCHIVE_FILE=$(archive_file $ARCHIVE_DIR $N $TARGET_HOST $SSH_ADDR)
-    while [ -f $ARCHIVE_FILE ]
-    do
-      N=$(expr $N + 1)
-      ARCHIVE_FILE=$(archive_file $ARCHIVE_DIR $N $TARGET_HOST $SSH_ADDR)
-    done
-  fi
-  cat $TMP_FILE > $ARCHIVE_FILE
-fi
 
 ######################################################################
 #
