@@ -34,7 +34,6 @@ msys_main() {
     ssh_host=false \
     archive_log=true \
     archive_file="" \
-    archive_dir="" \
     verbose=false
 
   while [ $# -gt 0 ] ; do
@@ -43,7 +42,7 @@ msys_main() {
         verbose=true
 	;;
       --archive-dir=*)
-        archive_dir="${1#--archive-dir=}"
+        ARCHIVE_DIR="${1#--archive-dir=}"
 	shift
 	;;
       --no-archive|-N)
@@ -110,14 +109,14 @@ msys_main() {
   #
   if $archive_log ; then
     if [ -z "$archive_file" ] ; then
-      [ -z "$archive_dir" ] && archive_dir="$(pwd)/archives"
-      [ ! -d $archive_dir ] && mkdir -p $archive_dir
+      [ -z "$ARCHIVE_DIR" ] && ARCHIVE_DIR="$(pwd)/archives"
+      [ ! -d $ARCHIVE_DR ] && mkdir -p $ARCHIVE_DIR
       n=0
-      archive_file="$(archive_filename $archive_dir $n $msys_host)"
+      archive_file="$(archive_filename $ARCHIVE_DIR $n $msys_host)"
       while [ -f $archive_file ]
       do
 	n=$(expr $n + 1)
-	archive_file="$(archive_filename $archive_dir $n $msys_host)"
+	archive_file="$(archive_filename $ARCHIVE_DIR $n $msys_host)"
       done
     fi
     $verbose && warn "Archiving to $archive_file"
