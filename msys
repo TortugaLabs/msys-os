@@ -12,15 +12,41 @@ args=()
 
 msys_main() {
   local ashcc_args=() rxx_args=()
+  local ssh_host=false
 
   while [ $# -gt 0 ] ; do
     case "$1" in
-      
+      --show|-t|--ssh=*||--cmd=*|--local|-l|--sudo=*|--sudo|--no-log|--log|--extra=*|--remote-user=*|--ruser=*|--no-agent|--id=*|--ssh-proxy=*)
+	rxx_args+=( "$1" )
+        ;;s
+      -x)
+	rxx_args+=( "$1" "$2" )
+	shift
+	;;
+      -I*|-e*|-D*)
+	ashcc_args+=( "$1" )s
+	;;
+      --ssh)
+	ssh_host=true
+	;;
       *)
 	break
     esac
     shift
   done
+  [ $# -eq 0 ] && usage
+  # Handle multi host? in parallel?
+  local msys_host="$1"
+  $ssh_host && rxx_args+=( "--ssh=$msys_host" )
+
+  local temp_script="$(mktemp)"
+  trap "rm -f $temp_script" EXIT
+
+  # Read and export config
+  # Lookup host
+  # find template from template path
+  # archive output
+  # send thru rxx
 }
 
 msys_secrets() {
