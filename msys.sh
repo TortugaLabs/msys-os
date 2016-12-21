@@ -28,6 +28,25 @@ archive_filename() {
   echo .$(date '+%Y%m%d').$n.txt
 }
 
+pre_processor() {
+  local temp_script="$1" ; shift
+  (
+    $ASHCC -o"$temp_script" "$@" || fatal "ASHCC execution failed"
+    RCODE=$(
+	set - $(tail -1 "$temp_script")
+	[ x"$1" = x"#SUCCESS" ] && exit 0
+	shift
+	echo "$*"
+	exit 1
+      ) || fatal "$RCODE"
+    return 0
+  ) && return 0
+  return 1
+}
+
+
+######################################################################
+
 msys_help() {
   sed s/^#// <<'EOF'
 #++
@@ -152,8 +171,7 @@ msys_main() {
   local \
     ssh_host=false \
     archive_log=true \
-    archive_file="" \
-    verbose=false
+    archive_file=""
 
   while [ $# -gt 0 ] ; do
     case "$1" in
@@ -205,46 +223,41 @@ msys_main() {
   $ssh_host && rxx_args+=( "--ssh=$msys_host" )
 
   local temp_script="$(mktemp)"
-  trap "rm -f $temp_script" EXIT
-
-  $verbose && warn "Preparing script..."
-  if ! $ASHCC -o"$temp_script" "${ashcc_args[@]}" "-DMSYS_NAME='$msys_host'" "$MSYS_BASE/msys_main.php" "$@" ; then
-    fatal "ASHCC execution failed"
-  fi
-  RCODE=$(
-    set - $(tail -1 "$temp_script")
-    [ x"$1" = x"#SUCCESS" ] && exit 0
-    shift
-    echo "$*"
-    exit 1
-  ) || fatal "$RCODE"
-  #
-  # If we need to save it, create archive file
-  #
-  if $archive_log ; then
-    if [ -z "$archive_file" ] ; then
-      [ -z "$ARCHIVE_DIR" ] && ARCHIVE_DIR="$(pwd)/archives"
-      [ ! -d $ARCHIVE_DR ] && mkdir -p $ARCHIVE_DIR
-      n=0
-      archive_file="$(archive_filename $ARCHIVE_DIR $n $msys_host)"
-      while [ -f $archive_file ]
-      do
-	n=$(expr $n + 1)
+  (
+    pre_processor "$temp_script" "${ashcc_args[@]}" "-DMSYS_NAME='$msys_host'" "$MSYS_BASE/msys_main.php" "$@" || exit 1
+    #
+    # If we need to save it, create archive file
+    #
+    if $archive_log ; then
+      if [ -z "$archive_file" ] ; then
+	[ -z "$ARCHIVE_DIR" ] && ARCHIVE_DIR="$(pwd)/archives"
+	[ ! -d $ARCHIVE_DR ] && mkdir -p $ARCHIVE_DIR
+	n=0
 	archive_file="$(archive_filename $ARCHIVE_DIR $n $msys_host)"
-      done
+	while [ -f $archive_file ]
+	do
+	  n=$(expr $n + 1)
+	  archive_file="$(archive_filename $ARCHIVE_DIR $n $msys_host)"
+	done
+      fi
+      warn "Archiving to $archive_file"
+      cat "$temp_script" > "$archive_file"
     fi
-    $verbose && warn "Archiving to $archive_file"
-    cat "$temp_script" > "$archive_file"
-  fi
     
-  # send thru rxx
-  $verbose && warn "Running RXX"
-  $RXX "${rxx_args[@]}" "$temp_script"
+    # send thru rxx
+    warn "Running RXX"
+    $RXX "${rxx_args[@]}" "$temp_script"
+  )
+  rv=$?
+  rm -f "$temp_script"
+  exit $rv
 }
 
 msys_secrets() {
   exec $MSYS_BASE/msecrets.sh "$@"
 }
+
+######################################################################
 
 while [ $# -gt 0 ] ; do
   case "$1" in
