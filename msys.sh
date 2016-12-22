@@ -28,11 +28,16 @@ pre_processor() {
   local temp_script="$1" ; shift
   (
     $ASHCC -o"$temp_script" "$@" || fatal "ASHCC execution failed"
+    cat "$temp_script"
     RCODE=$(
-	set - $(tail -1 "$temp_script")
-	[ x"$1" = x"#SUCCESS" ] && exit 0
-	shift
-	echo "$*"
+        ln="$(tail -1 "$temp_script")"
+	if [ -z "$ln" ] ; then
+	  echo 'FAILURE'
+	else
+	  set - $ln
+	  [ x"$1" = x"#SUCCESS" ] && exit 0
+	  echo "$ln"
+	fi
 	exit 1
       ) || fatal "$RCODE"
     return 0

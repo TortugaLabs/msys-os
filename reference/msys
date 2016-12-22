@@ -1,0 +1,26 @@
+#!/bin/bash
+#
+# SECRETS_CFG
+# ADM_KEYS
+# MSYS_TEMPLATE_PATH
+# ARCHIVE_DIR
+#
+set -euf -o pipefail
+
+_dir=$(cd $(dirname $0) && pwd)
+msys=$_dir/../msys.sh
+
+# Make sure that any pkgs are properly configured/available...
+ww=$(git submodule status | (grep '^+' || :) | wc -l)
+if [ $ww -gt 0 ] ; then
+  echo "Skipping submodule update"
+else
+  git submodule update --init --recursive
+fi
+
+export \
+  MSYS_HOME=$_dir \
+  MSYS_INI=$_dir/main.ini \
+  MSYS_TEMPLATE_PATH=$_dir/systems
+
+exec $msys "$@"

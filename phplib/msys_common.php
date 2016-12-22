@@ -36,6 +36,7 @@ function msys_get_template(array &$cf) {
     if ($fn !== FALSE) return $fn;
   }
   // Next we check if there is a template field
+  if (!is_array($cf['hosts'][MSYS_NAME])) return FALSE;
   $templ = vlookup('hosts.'.MSYS_NAME.'.template',$cf);
   if ($templ == NULL) return FALSE;
   return $templ;
