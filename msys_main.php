@@ -30,7 +30,7 @@
 if (getenv('MSYS_BASE')) define('MSYS_BASE',preg_replace('/\/+$/','',getenv('MSYS_BASE')).'/');
 require_once(MSYS_BASE.'phplib/msys_common.php');
 
-if (defined('DEBUG')) echo('set -x'.NL);
+if (defined('DEBUG')) echo('set -x'.PHP_EOL);
 
 if (defined('TEST_MODE') && !defined('TEST_SHOW_ALL')) {
   /**
@@ -51,7 +51,7 @@ define('QEOFMARK',"'".EOFMARK."'");
 /**
  * The actual EOFLINE for shell HERE documents
  */
-define('EOFLINE',NL.EOFMARK.NL);
+define('EOFLINE',PHP_EOL.EOFMARK.PHP_EOL);
 
 
 //
@@ -93,14 +93,14 @@ function msys_main() {
   return TRUE;
 }
 
-$msys_post_code_data = 'echo ("# post code data\n");'.NL;
-$msys_post_code_text = '# post code text'.NL;
+$msys_post_code_data = 'echo ("# post code data\n");'.PHP_EOL;
+$msys_post_code_text = '# post code text'.PHP_EOL;
 
 if (msys_main()) require_once(MSYS_TEMPL);
 
 eval($msys_post_code_data);
 echo($msys_post_code_text);
 
-echo(NL.'#SUCCESS'.NL);
+echo(PHP_EOL.'#SUCCESS'.PHP_EOL);
 
 

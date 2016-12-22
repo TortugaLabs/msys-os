@@ -89,7 +89,7 @@ function query_mode($cf,$argv) {
   foreach ($argv as $var) {
     $dat  = vlookup($var,$cf,[
 	      VLOOKUP_DEFAULT => '#not_found#',
-		VLOOKUP_FLATTEN,
+	      VLOOKUP_FLATTEN => ' ',
 	      VLOOKUP_FLATTEN_NO_UNDEF]);
     echo $prefix.$dat."\n";
   } 

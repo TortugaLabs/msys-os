@@ -89,6 +89,12 @@ function read_ini($file, $flags = 0) {
 
   $ini = parse_ini_string($txt,TRUE,$scanner);
   if ($ini === FALSE) return FALSE;
+  if (isset($ini['@'])) {
+    foreach ($ini['@'] as $i => $j) {
+      $ini[$i] = $j;
+    }
+    unset($ini['@']);
+  }
   
   // Post process stuff...
   if (($flags & READ_INI_NO_TEMPLATES) == 0) _ini_expand_templates($ini);
@@ -268,6 +274,7 @@ function _preprocess_ini($file, $nophp = FALSE, $meta = '', $msg = NULL) {
 	list($inmeta,$inc) = $mv;
       }
       $inc = dirname($file).'/'.$inc;
+      $txt .= '[@]'.PHP_EOL;
       $txt .= _preprocess_ini($inc, $nophp, $inmeta, [$file,$ln]);
     } else if (!$nophp && preg_match('/^\s*\$php\s+([^\n]+)/', $ln, $mv)) {
       ob_start();
