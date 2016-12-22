@@ -28,6 +28,24 @@
  */
 
 /**
+ * Lookups up a value in a $ini stash
+ * 
+ * @param str $var	variable to lookup
+ * @param array $cf	INI stash
+ * @return mixed	found value or NULL.
+ */
+function qlookup($var,$cf) {
+  if (strpos($var,'.') !== FALSE) {
+    list($i,$j) = explode('.',$var,2);
+    if (!isset($cf[$i])) return NULL;
+    return qlookup($j, $cf[$i]);
+  }
+  if (!isset($cf[$var])) return NULL;
+  return $cf[$var];
+}
+  
+
+/**
  * Lookups up a value in a $ini stash, it also performs variable
  * expansions ($abc or $<abc>).  Or PHP <?= statement ?>
  * 
@@ -90,7 +108,10 @@ function vlookup($var, $cf, $opts = NULL, $v = NULL,$cvar=NULL) {
       if ($opts[VLOOKUP_FLATTEN_NO_UNDEF] && $j === NULL) continue;
       $out[$k] = $j;
     }
-    if ($opts[VLOOKUP_FLATTEN]) return implode($opts[VLOOKUP_FLATTEN], $out);
+    if ($opts[VLOOKUP_FLATTEN]) {
+      if (is_vecEx($v[$var])) return implode($opts[VLOOKUP_FLATTEN], $out);
+      return implode($opts[VLOOKUP_FLATTEN], array_keys($out));
+    }
     return $out;
   }
   

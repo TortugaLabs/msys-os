@@ -28,6 +28,8 @@
  */
  
 if (getenv('MSYS_BASE')) define('MSYS_BASE',preg_replace('/\/+$/','',getenv('MSYS_BASE')).'/');
+require_once(MSYS_BASE.'phplib/msys_common.php');
+
 if (defined('DEBUG')) echo('set -x'.NL);
 
 if (defined('TEST_MODE') && !defined('TEST_SHOW_ALL')) {
@@ -51,10 +53,7 @@ define('QEOFMARK',"'".EOFMARK."'");
  */
 define('EOFLINE',NL.EOFMARK.NL);
 
-date_default_timezone_set('UTC');
 
-require_once(MSYS_BASE.'phplib/readcfg.php');
-require_once(MSYS_BASE.'phplib/vlookup.php');
 //
 // Defined constants
 // -DTEST_MODE : if --show|-t
@@ -88,49 +87,16 @@ function post_text($txt) {
   $msys_post_code_text .= $txt;
 }
 
-function msys_get_template(array &$cf) {
-  $exts = [ '.php', '.sh' ];
-  // First we check if there is a template matching the file name...
-  foreach ($exts as $ext) {
-    $fn = stream_resolve_include_path(MSYS_NAME.$ext);
-    if ($fn !== FALSE) return $fn;
-  }
-  // Next we check if there is a template field
-  $templ = vlookup('hosts.'.MSYS_NAME.'.template',$cf);
-  if ($templ == NULL) return FALSE;
-  return $templ;
-}
-
-function msys_init() {
-  foreach (['SECRETS_CFG','ADM_KEYS','MSYS_TEMPLATE_PATH','MSYS_INI'] as $i) {
-    $j = getenv($i);
-    echo "i=$i\nj=$j\n";
-    if (!isset($j)) continue;
-    define($i,$j);
-  }
-  if (!defined('MSYS_INI')) die("No MSYS_CONFIG defined\n");
-  if (defined('MSYS_TEMPLATE_PATH'))
-    set_include_path(get_include_path().PATH_SEPARATOR.MSYS_TEMPLATE_PATH);
-
-  $cf = read_ini(MSYS_INI);
-  if ($cf == FALSE || count($cf) == 0) die('Error reading config "'.MSYS_INI.'"'.PHP_EOL);
-  if (!isset($cf['hosts'])) die("Configuration does not have a 'hosts' section\n");
-  if (!isset($cf['hosts'][MSYS_NAME])) die("Missing config section for host '".MSYS_NAME."'\n");
-
-  $templ = msys_get_template($cf);
-  if ($templ === FALSE) die("No suitable template selected for host '".MSYS_NAME."'\n");
-  echo '# '.MSYS_NAME.' using template: '.$templ.PHP_EOL;
-
-  define('MSYS_TEMPL',$templ);
-  define('MSYS_TEMPL_DIR',dirname($templ).'/');
-  set_include_path(get_include_path().PATH_SEPARATOR.dirname($templ));
+function msys_main() {
+  if (!defined('MSYS_NAME')) die("No MSYS_NAME provided\n");
+  $cf = msys_init();
   return TRUE;
 }
 
 $msys_post_code_data = 'echo ("# post code data\n");'.NL;
 $msys_post_code_text = '# post code text'.NL;
 
-if (msys_init()) require_once(MSYS_TEMPL);
+if (msys_main()) require_once(MSYS_TEMPL);
 
 eval($msys_post_code_data);
 echo($msys_post_code_text);

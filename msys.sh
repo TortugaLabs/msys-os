@@ -1,18 +1,14 @@
 #!/bin/bash
 #
-# SECRETS_CFG
-# ADM_KEYS
-# MSYS_TEMPLATE_PATH
-# MSYS_INI
 
-[ -z "$MSYS_BASE" ] && export MSYS_BASE=$(cd $(dirname $0) && pwd)
+[ -z "${MSYS_BASE:-}" ] && export MSYS_BASE=$(cd $(dirname $0) && pwd)
 export PATH=$PATH:"$MSYS_BASE"
 eval $($MSYS_BASE/ashlib/ashlib)
 ASHCC=$ASHLIB/ashcc
 RXX=$MSYS_BASE/rxx.sh
 
 type $ASHCC >/dev/null 2>&1 || fatal "No ASHCC found"
-op=msys_main
+op=(msys_main)
 args=()
 
 usage() {
@@ -44,6 +40,36 @@ pre_processor() {
   return 1
 }
 
+
+is_ashcc_arg() {
+  local r_list="$1" r_shift="$2"
+  shift 2
+  case "$1" in
+    -I*|-e*|-D*)
+      eval ${r_list}'+=( "$1" )'
+      eval ${r_shift}=1
+      return 0
+      ;;
+  esac
+  return 1
+}
+is_rxx_arg() {
+  local r_list="$1" r_shift="$2"
+  shift 2
+  case "$1" in
+    --ssh=*|--cmd=*|--local|-l|--sudo=*|--sudo|--no-log|--log|--extra=*|--remote-user=*|--ruser=*|--no-agent|--id=*|--ssh-proxy=*|--show|-t)
+      eval ${r_list}'+=( "$1" )'
+      eval ${r_shift}=1
+      return 0
+      ;;
+    -x)
+      eval ${r_list}'+=( "$1" "$2" )'
+      eval ${r_shift}=2
+      return 0
+      ;;
+  esac
+  return 1
+}
 
 ######################################################################
 
@@ -157,6 +183,11 @@ msys_help() {
 #    Example proxy command:
 #
 #	`ssh -W %h:%p <user>@<jumpserver>`
+# SECRETS_CFG
+# ADM_KEYS
+# MSYS_TEMPLATE_PATH
+# MSYS_INI
+# MSYS_BASE
 #
 # == SEE ALSO
 #
@@ -198,20 +229,17 @@ msys_main() {
 	archive_log=false
 	archive_file=""
 	;;
-      --ssh=*|--cmd=*|--local|-l|--sudo=*|--sudo|--no-log|--log|--extra=*|--remote-user=*|--ruser=*|--no-agent|--id=*|--ssh-proxy=*)
-	rxx_args+=( "$1" )
-        ;;
-      -x)
-	rxx_args+=( "$1" "$2" )
-	shift
-	;;
-      -I*|-e*|-D*)
-	ashcc_args+=( "$1" )s
-	;;
       --ssh)
 	ssh_host=true
 	;;
       *)
+	if is_ashcc_arg ashcc_args shift "$@" ; then
+	  shift $shift
+	  continue
+	elif is_rxx_arg rxx_args shift "$@" ; then
+	  shift $shift
+	  continue
+	fi
 	break
     esac
     shift
@@ -257,6 +285,19 @@ msys_secrets() {
   exec $MSYS_BASE/msecrets.sh "$@"
 }
 
+msys_dump() {
+  local mode="$1" ; shift
+
+  local ashcc_args=()
+  while [ $# -gt 0 ] ; do
+    is_ashcc_arg ashcc_args shift "$@" || break
+    shift $shift
+  done
+
+  $ASHCC "${ashcc_args[@]}" "$MSYS_BASE/msys_dump.php" $mode "$@"
+}
+
+
 ######################################################################
 
 while [ $# -gt 0 ] ; do
@@ -273,11 +314,17 @@ while [ $# -gt 0 ] ; do
     --template-path=*)
       export MSYS_TEMPLATE_PATH="${1#--template-path=}"
       ;;
+    --dump)
+      op=(msys_dump txt)
+      ;;
+    --dump=*)
+      op=(msys_dump "${1#--dump=}")
+      ;;
     --msecrets)
-      op=msys_secrets
+      op=(msys_secrets)
       ;;
     --help)
-      op=msys_help
+      op=(msys_help)
       ;;
     *)
       break
@@ -287,7 +334,7 @@ done
 
 [ -z "${MSYS_INI:-}" ] && fatal "Configuration file not specified!"
 
-"$op" "${args[@]}" "$@"
+"${op[@]}" "${args[@]}" "$@"
 
 
 exit
