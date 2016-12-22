@@ -26,7 +26,7 @@
  * @package	msys
  * @license     http://www.opensource.org/licenses/bsd-license.php
  */
-
+error_reporting(E_ALL);
 if (getenv('MSYS_BASE')) define('MSYS_BASE',preg_replace('/\/+$/','',getenv('MSYS_BASE')).'/');
 require_once(MSYS_BASE.'phplib/msys_common.php');
 
