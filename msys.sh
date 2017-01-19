@@ -28,7 +28,7 @@ pre_processor() {
   local temp_script="$1" ; shift
   (
     $ASHCC -o"$temp_script" "$@" || fatal "ASHCC execution failed"
-    cat "$temp_script"
+    #cat "$temp_script"
     RCODE=$(
         ln="$(tail -1 "$temp_script")"
 	if [ -z "$ln" ] ; then
@@ -278,7 +278,7 @@ msys_main() {
     fi
     
     # send thru rxx
-    warn "Running RXX"
+    warn "Running $RXX"
     $RXX "${rxx_args[@]}" "$temp_script"
   )
   rv=$?

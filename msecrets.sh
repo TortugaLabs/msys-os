@@ -43,7 +43,7 @@
 [ -z "$ADM_KEYS" ] && ADM_KEYS=/etc/msys.keys
 
 script_dir=$(cd $(dirname $0) && pwd)
-
+adm='root'
 test=false
 
 while [ $# -gt 0 ] ; do
@@ -123,44 +123,16 @@ eval $("$script_dir"/ashlib/ashlib)
     declare -f x_post
     echo 'x_post'
   fi
-)
+) | (
+  $test && exec cat
 
-exit
-
-
-
-
-
-
+  script="$(cat)"
   
-  
-"$ASHLIB"/ashcc 
-
-
-exit
-
-exit
-if $test  ; then
-  
-  exec $script_dir/msys \
-    "-DMSYS_SECRETS_CFG='$SECRETS_CFG'" \
-    "-DMSYS_ADMIN_KEYS='$ADM_KEYS'" \
-    -t secrets
-else
-  rv=0
   for ip in "$@"
   do
-    $script_dir/msys \
-      --no-archive \
-      "-DMSYS_SECRETS_CFG='$SECRETS_CFG'" \
-      "-DMSYS_ADMIN_KEYS='$ADM_KEYS'" \
-      --ssh="$ip" secrets
-    rv=$(expr $rv + $?)
+     echo "$script" | ssh -l "$adm" "$@"
   done
-  exit $rv
-fi
+)
 
 
-#!/bin/sh
-#
 

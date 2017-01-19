@@ -26,7 +26,7 @@ handle_input() {
 }
 
 chktarget() {
-  [ -z "$target" ] && fatal "No CMD target specified"
+  [ -z "$target" ] && fatal "No CMD target specified" || :
 }
 
 parse_target() {
