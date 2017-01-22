@@ -43,6 +43,19 @@ function ipcf() {
       $res['ipv6'] = '$<nets.'.$res['net'].'.ipv6>::'.$res['node'];
     }
   }
+  if (!isset($res['novlan'])) {
+    if (isset($res['net'])) $res['vlan'] = '$<nets.'.$res['net'].'.vlan>';
+  }
+  if (isset($res['ipv4'])) {
+    if (!isset($res['gw'])) {
+      $res['gw'] = '$<nets.'.$res['net'].'.ipv4>.$<nets.'.$res['net'].'.gw>';
+    }
+  }
+  if (isset($res['ipv6'])) {
+    if (!isset($res['ipv6gw'])) {
+      $res['ipv6gw'] = '$<nets.'.$res['net'].'.ipv6>::$<nets.'.$res['net'].'.gw>';
+    }
+  }
   // Output entries...
   foreach ($res as $i=>$j) {
     echo $ifname.'.'.$i.' = '.$j.PHP_EOL;

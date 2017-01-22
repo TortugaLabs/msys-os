@@ -152,7 +152,7 @@ function read_cfgdir($dir) {
  */
 function _ini_expand_templates(&$ini) {
   $p_ini = [];
-  
+
   foreach($ini as $namespace => $properties){
     if (!is_array($properties) || strpos($namespace,':') == FALSE) continue;        
     list($name, $base) = explode(':', $namespace,2);
@@ -170,8 +170,7 @@ function _ini_expand_templates(&$ini) {
       if (!isset($ini[$base])) continue;
     }
     $p_ini[$namespace] = [ $name,$base ];
-  }
-  
+  } 
   foreach ($p_ini as $namespace => $i) {
     list($name,$base) = $i;
     if (!isset($ini[$name])) $ini[$name] = [];
@@ -186,6 +185,7 @@ function _ini_expand_templates(&$ini) {
     }
     unset($ini[$namespace]);
   }
+
 }
 
 /**
@@ -218,13 +218,14 @@ function _ini_expand_arrays(&$ini) {
  */
 
 function _ini_expand_keys(&$ini) {
+  ksort($ini);
   foreach ($ini as $k => &$v) {
     if (strpos($k,'.') !== false) {
       // Found '.' separators...
       $ptr = &$ini;
       foreach (explode('.',$k) as $j) {
 	if (!isset($ptr[$j])) {
-	  $ptr[$j] = array();
+	  $ptr[$j] = [];
 	}
 	$ptr = &$ptr[$j];
       }
