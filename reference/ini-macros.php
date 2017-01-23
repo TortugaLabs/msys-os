@@ -68,6 +68,9 @@ function ipcf() {
     echo 'ipv4[] = '.$res['ipv4'].PHP_EOL;
     echo 'ip[] = '.$res['ipv4'].PHP_EOL;
   }
+  if (isset($res['mac'])) {
+    echo 'mac[] = '.$res['mac'].PHP_EOL;
+  }
 }
 
 //require_once('msys-os/phplib/readcfg.php');
