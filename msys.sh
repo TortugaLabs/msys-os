@@ -188,11 +188,12 @@ msys_help() {
 #    Example proxy command:
 #
 #	`ssh -W %h:%p <user>@<jumpserver>`
-# SECRETS_CFG
-# ADM_KEYS
-# MSYS_TEMPLATE_PATH
-# MSYS_INI
-# MSYS_BASE
+#
+# *SECRETS_CFG*::
+# *ADM_KEYS*::
+# *MSYS_TEMPLATE_PATH*::
+# *MSYS_INI*::
+# *MSYS_BASE*::
 #
 # == SEE ALSO
 #
