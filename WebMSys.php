@@ -126,7 +126,9 @@ abstract class WebMSys {
     $kn = addslashes($key);
     foreach (self::$cf[$key] as $k => $v) {
       if (!preg_match('/^[_a-zA-Z][_a-zA-Z0-9]*$/',$k)) continue;
-      $txt .= 'if (!isset($'.$k.')) $'.$k.' = '. self::class . '::$cf["'.$kn.'"]["'.$k.'"];'.PHP_EOL;
+      //$txt .= 'if (!isset($'.$k.')) $'.$k.' = '. self::class . '::$cf["'.$kn.'"]["'.$k.'"];'.PHP_EOL;
+      //$txt .= 'if (!isset($'.$k.')) $'.$k.' = WebMSys::$cf["'.$kn.'"]["'.$k.'"];'.PHP_EOL;
+      $txt .= 'if (!isset($'.$k.')) $'.$k.' = '.__CLASS__.'::$cf["'.$kn.'"]["'.$k.'"];'.PHP_EOL;
     }
     return $txt;
   }
