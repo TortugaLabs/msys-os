@@ -91,16 +91,6 @@ abstract class WebMSys {
       }
     }
   } /* End configure */
-  static public function register_template_dir($d) {
-    if (!isset(self::$cf)) self::$cf = [];
-    if (!is_array(self::$cf)) self::fatal_error_handler('Internal error! invalid self::$cf');
-    if (!isset(self::$cf['templates'])) {
-      self::$cf['templates'] = [];
-    } else if (!is_array(self::$cf['templates'])) {
-      self::$sc['templates'] = [ self::$cf['templates'] ];
-    }
-    if (is_dir($d)) self::$cf['templates'][] = $d;
-  }
   static public function get_template($f,$fatal = TRUE) {
     if (!isset(self::$cf['templates'])) 
       self::fatal_error_handler('Missing templates configuration');

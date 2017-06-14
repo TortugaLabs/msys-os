@@ -34,5 +34,5 @@ if (isset(WebMSys::$cf['main'])) {
 // URL must contain f=template entry
 if (!isset($f)) $f = isset(WebMSys::$cf['default']) ? WebMSys::$cf['default'] : 'default';
 
-header('Content-type: text/plain');
+if (!preg_match('/\.html?$/',$f)) header('Content-type: text/plain');
 require(WebMSys::get_template($f));
