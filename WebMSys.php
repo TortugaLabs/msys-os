@@ -69,18 +69,20 @@ abstract class WebMSys {
     } else {
       if (!is_array($fs)) $fs = [$fs];
     }
+    if (getenv('SCRIPT_FILENAME')) array_push($fs,getenv('SCRIPT_FILENAME'));
     if ($is_httpd) array_push($fs,$_SERVER['SCRIPT_FILENAME']);
-    
+        
     foreach (['ini','phps','php'] as $ext) {
       foreach ($fs as $f) {
 	foreach ([$f,realpath($f)] as $ff) {
-	  $b = preg_replace('/\.php$/','',$ff);
+	  $b = preg_replace('/\.(php|cgi)$/','',$ff);
 	  $b = [
 		$b.'-cfg.',
 		$b.'.',
 		dirname($f).'/config.',
 	       ];
 	  foreach ($b as $bb) {
+	    //fwrite(STDERR,'bb='.$bb.PHP_EOL);
 	    if (is_readable($bb.$ext)) {
 	      self::cfg_file($bb.$ext);
 	      if ($process_one) return;
